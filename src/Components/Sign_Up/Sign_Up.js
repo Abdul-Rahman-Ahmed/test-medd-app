@@ -1,157 +1,136 @@
-import React, { useState } from "react";
-import validator from "validator"; // Importing validator library
-import "./Sign_Up.css";
+import React, { useState } from 'react';
+import './Sign_Up.css';
+import { useNavigate } from 'react-router-dom';
+import { API_URL } from '../../config';
 
 const Sign_Up = () => {
-  const [formData, setFormData] = useState({
-    name: "",
-    phone: "",
-    email: "",
-    password: "",
-  });
-  const [errors, setErrors] = useState({});
+    // State variables
+    const [name, setName] = useState('');
+    const [email, setEmail] = useState('');
+    const [phone, setPhone] = useState('');
+    const [password, setPassword] = useState('');
+    const [showerr, setShowerr] = useState(''); // To show error messages
+    const navigate = useNavigate();
 
-  // Validation Function
-  const validate = () => {
-    const errors = {};
+    // Validation function for phone number
+    const validatePhone = (phone) => /^\d{10}$/.test(phone);
 
-    // Name validation
-    if (validator.isEmpty(formData.name)) {
-      errors.name = "Name is required.";
-    }
+    // Function to handle form submission
+    const register = async (e) => {
+        e.preventDefault();
 
-    // Phone validation (exactly 10 digits)
-    if (!validator.isLength(formData.phone, { min: 10, max: 10 }) || !validator.isNumeric(formData.phone)) {
-      errors.phone = "Phone must be exactly 10 digits.";
-    }
+        // Basic front-end validations
+        if (!name || !email || !phone || !password) {
+            setShowerr('All fields are required!');
+            return;
+        }
+        if (!validatePhone(phone)) {
+            setShowerr('Phone number must be exactly 10 digits.');
+            return;
+        }
+        if (password.length < 6) {
+            setShowerr('Password must be at least 6 characters long.');
+            return;
+        }
 
-    // Email validation
-    if (!validator.isEmail(formData.email)) {
-      errors.email = "Email is not valid.";
-    }
+        // API call
+        const response = await fetch(`${API_URL}/api/auth/register`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                name,
+                email,
+                phone,
+                password,
+            }),
+        });
 
-    // Password validation
-    if (!validator.isLength(formData.password, { min: 6 })) {
-      errors.password = "Password must be at least 6 characters long.";
-    }
+        const json = await response.json();
 
-    setErrors(errors);
-    return Object.keys(errors).length === 0; // Return true if no errors
-  };
+        if (json.authtoken) {
+            // Store user data in session storage
+            sessionStorage.setItem('auth-token', json.authtoken);
+            sessionStorage.setItem('name', name);
+            sessionStorage.setItem('phone', phone);
+            sessionStorage.setItem('email', email);
 
-  // Handle form submission
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (validate()) {
-      alert("Signup Successful!");
-      console.log("Form Data:", formData);
-    }
-  };
+            // Redirect to the home page
+            navigate('/');
+            window.location.reload();
+        } else {
+            if (json.errors) {
+                setShowerr(json.errors[0]?.msg || 'Something went wrong!');
+            } else {
+                setShowerr(json.error);
+            }
+        }
+    };
 
-  // Handle input changes
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
-  };
-
-  return (
-    <div className="container" style={{ marginTop: "5%" }}>
-      <div className="signup-grid">
-        <div className="signup-text">
-          <h1>Sign Up</h1>
+    // JSX to render the Sign-Up form
+    return (
+        <div className="container" style={{ marginTop: '5%' }}>
+            <div className="signup-grid">
+                <div className="signup-form">
+                    <form method="POST" onSubmit={register}>
+                        <div className="form-group">
+                            <label htmlFor="name">Name</label>
+                            <input
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                type="text"
+                                id="name"
+                                className="form-control"
+                                placeholder="Enter your name"
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label htmlFor="email">Email</label>
+                            <input
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                type="email"
+                                id="email"
+                                className="form-control"
+                                placeholder="Enter your email"
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label htmlFor="phone">Phone</label>
+                            <input
+                                value={phone}
+                                onChange={(e) => setPhone(e.target.value)}
+                                type="tel"
+                                id="phone"
+                                className="form-control"
+                                placeholder="Enter your phone number"
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label htmlFor="password">Password</label>
+                            <input
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                type="password"
+                                id="password"
+                                className="form-control"
+                                placeholder="Enter your password"
+                            />
+                        </div>
+                        {showerr && (
+                            <div className="err" style={{ color: 'red', marginTop: '10px' }}>
+                                {showerr}
+                            </div>
+                        )}
+                        <button type="submit" className="btn btn-primary" style={{ marginTop: '15px' }}>
+                            Sign Up
+                        </button>
+                    </form>
+                </div>
+            </div>
         </div>
-        <div className="signup-text1" style={{ textAlign: "left" }}>
-          Already a member?{" "}
-          <span>
-            <a href="../Login/Login.html" style={{ color: "#2190FF" }}>
-              Login
-            </a>
-          </span>
-        </div>
-        <div className="signup-form">
-          <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label htmlFor="name">Name</label>
-              <input
-                type="text"
-                name="name"
-                id="name"
-                required
-                className="form-control"
-                placeholder="Enter your name"
-                value={formData.name}
-                onChange={handleChange}
-              />
-              {errors.name && <small className="error-text">{errors.name}</small>}
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="phone">Phone</label>
-              <input
-                type="tel"
-                name="phone"
-                id="phone"
-                required
-                className="form-control"
-                placeholder="Enter your phone number"
-                value={formData.phone}
-                onChange={handleChange}
-              />
-              {errors.phone && <small className="error-text">{errors.phone}</small>}
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="email">Email</label>
-              <input
-                type="email"
-                name="email"
-                id="email"
-                required
-                className="form-control"
-                placeholder="Enter your email"
-                value={formData.email}
-                onChange={handleChange}
-              />
-              {errors.email && <small className="error-text">{errors.email}</small>}
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="password">Password</label>
-              <input
-                type="password"
-                name="password"
-                id="password"
-                required
-                className="form-control"
-                placeholder="Enter your password"
-                value={formData.password}
-                onChange={handleChange}
-              />
-              {errors.password && (
-                <small className="error-text">{errors.password}</small>
-              )}
-            </div>
-
-            <div className="btn-group">
-              <button
-                type="submit"
-                className="btn btn-primary mb-2 mr-1 waves-effect waves-light"
-              >
-                Submit
-              </button>
-              <button
-                type="reset"
-                className="btn btn-danger mb-2 waves-effect waves-light"
-                onClick={() => setFormData({ name: "", phone: "", email: "", password: "" })}
-              >
-                Reset
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  );
+    );
 };
 
 export default Sign_Up;
